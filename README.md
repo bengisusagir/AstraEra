@@ -1,8 +1,18 @@
-# Slaymaster
+# AstraEra
 
-Game link : https://bengisusagir.itch.io/slaymaster <br/>
-Multiplayer FPS Game
+A fast-paced multiplayer First-Person Shooter (FPS) game built with Unity and Photon (PUN 2).
 
-<img src="https://media.licdn.com/dms/image/D4D22AQGlpcxsdpHoOg/feedshare-shrink_2048_1536/0/1697107338722?e=1701302400&v=beta&t=EuHgIidU418KsGoMfm05POF8Tg897WV1cVfbZXO0R5s" alt="ph1" width="720" height="450">
-<img src="https://media.licdn.com/dms/image/D4D22AQGFOQw3r4hIoA/feedshare-shrink_2048_1536/0/1697107338814?e=1701302400&v=beta&t=JJ5uS9_aQefC8grX8QzqXOJD3E7itSDDWbnQgFmmPgE" alt="ph1" width="720" height="450">
-<img src="https://media.licdn.com/dms/image/D4D22AQGdIqYaE6_fRQ/feedshare-shrink_2048_1536/0/1697107339018?e=1701302400&v=beta&t=EW4FG0MjFXLu5ed6Dx2-mWPMmyZgwfyjtN9duyvM_F4" alt="ph1" width="720" height="450">
+## Features
+- **Multiplayer Matchmaking:** Connect and play with other players online.
+- **Action-Packed Gameplay:** Smooth FPS mechanics, responsive gunplay, and character movement.
+- **Low-Poly Art Style:** Clean, stylized graphics optimized for high performance.
+
+## Built With
+- **Game Engine:** [Unity](https://unity.com/)
+- **Networking:** [Photon Unity Networking 2 (PUN 2)](https://www.photonengine.com/pun)
+
+## Getting Started
+To view or edit the project locally:
+1. Clone this repository.
+2. Open the `AstraEra` folder using Unity Hub.
+3. Open the main scene located in the `Scenes` folder and press Play!
