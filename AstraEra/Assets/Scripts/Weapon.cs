@@ -1,10 +1,7 @@
 using Photon.Pun;
 using Photon.Pun.UtilityScripts;
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,7 +10,7 @@ public class Weapon : MonoBehaviourPun
     public int damage;
     public float fireRate;
 
-    public Camera camera;
+    public new Camera camera;
     public GameObject spi;
     private float nextFire;
     public AudioSource au;
@@ -21,7 +18,6 @@ public class Weapon : MonoBehaviourPun
     public AudioSource taken;
 
     public PhotonView pv;
-
 
     [Header("VFX")]
     public GameObject hitVFX;
@@ -32,68 +28,77 @@ public class Weapon : MonoBehaviourPun
     public int magAmmo = 30;
     public TextMeshProUGUI ammoText;
     public TextMeshProUGUI magText;
-    private bool isGunEmpty = false;
     public Image ammoCircle;
 
     [Header("Animation")]
     public Animation anim;
     public AnimationClip reload;
 
+    private bool isReloading = false;
 
-    // Update is called once per frame
     private void Awake()
     {
         pv = GetComponent<PhotonView>();
     }
+
     private void Start()
     {
         magText.text = mag.ToString();
         ammoText.text = ammo + "/" + magAmmo;
         SetAmmo();
-
     }
+
     void SetAmmo()
     {
         ammoCircle.fillAmount = (float)ammo / magAmmo;
     }
+
     void Reload()
     {
+        if (isReloading || mag <= 0)
+            return;
+
+        isReloading = true;
         anim.Play(reload.name);
-        if (mag > 0)
-        {
-            mag--;
-            ammo = magAmmo;
-        }
+
+        mag--;
+        ammo = magAmmo;
 
         magText.text = mag.ToString();
         ammoText.text = ammo + "/" + magAmmo;
         SetAmmo();
 
+        // Unlock reload after animation finishes
+        StartCoroutine(ReloadCooldown(reload.length));
     }
+
+    private IEnumerator ReloadCooldown(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        isReloading = false;
+    }
+
     [PunRPC]
     void TakeAmmo(string ammos)
     {
-
         GameObject gobje = GameObject.Find(ammos);
         if (gobje != null)
         {
             taken.Play();
-        gobje.SetActive(false);
+            gobje.SetActive(false);
             mag++;
             SetAmmo();
             magText.text = mag.ToString();
             ammoText.text = ammo + "/" + magAmmo;
         }
-
     }
+
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.tag == "ammo")
+        if (other.CompareTag("ammo"))
         {
-            pv.RPC("TakeAmmo", RpcTarget.AllBuffered,other.gameObject.name);
-
+            pv.RPC("TakeAmmo", RpcTarget.AllBuffered, other.gameObject.name);
         }
-
     }
 
     void Update()
@@ -101,76 +106,85 @@ public class Weapon : MonoBehaviourPun
         if (!pv.IsMine)
             return;
 
-
         if (nextFire > 0)
             nextFire -= Time.deltaTime;
-        if ( nextFire <= 0 && ammo >= 0 && anim.isPlaying==false)
+
+        if (nextFire <= 0 && ammo >= 0 && !anim.isPlaying && !isReloading)
         {
+            // Block firing while ESC menu is open (sometimes it's stucks here)
+            if (MouseLook.instance != null && MouseLook.instance.isESC)
+                return;
+
             if (ammo == 0)
             {
-                isGunEmpty = true;
                 if (Input.GetButtonDown("Fire1"))
                 {
                     PlayEmptyGunSound();
                 }
             }
-            else if(Input.GetButton("Fire1"))
+            else if (Input.GetButton("Fire1"))
             {
-            if (MouseLook.instance.isESC)
-            {
-                MouseLook.instance.isESC = true;
+                nextFire = 1f / fireRate;
+                ammo--;
+                magText.text = mag.ToString();
+                ammoText.text = ammo + "/" + magAmmo;
+                SetAmmo();
+                Fire();
+                au.Play();
+                pv.RPC("PlaySoundsForAll", RpcTarget.Others);
             }
-            nextFire = 1 / fireRate;
-            ammo--;
-            magText.text = mag.ToString();
-            ammoText.text = ammo + "/" + magAmmo;
-            SetAmmo();
-            Fire();
-            au.Play();
-            pv.RPC("PlaySoundsForAll", RpcTarget.All);
-            }
-            else if (ammo > 0)
-            {
-                isGunEmpty = false; 
-            }
-
         }
-        
+
         if (Input.GetKeyDown(KeyCode.R))
-            {
-                Reload();
-            }
+        {
+            Reload();
+        }
     }
 
     void PlayEmptyGunSound()
     {
         reloads.PlayOneShot(reloads.clip);
     }
+
     [PunRPC]
     public void PlaySoundsForAll()
     {
         au.Play();
-
     }
+
     void Fire()
     {
         Ray ray = new Ray(camera.transform.position, camera.transform.forward);
         RaycastHit hit;
 
-        if(Physics.Raycast(ray.origin,ray.direction,out hit, 100f))
+        if (Physics.Raycast(ray.origin, ray.direction, out hit, 100f))
         {
-            PhotonNetwork.Instantiate(hitVFX.name, hit.point, Quaternion.identity);
-            
+            // Spawn VFX locally and on all other clients via RPC
+            SpawnHitVFX(hit.point);
+            pv.RPC("RpcSpawnHitVFX", RpcTarget.Others, hit.point);
 
-            if (hit.transform.gameObject.GetComponent<Health>())
+            Health targetHealth = hit.transform.gameObject.GetComponent<Health>();
+            if (targetHealth != null)
             {
-                if(damage >= hit.transform.gameObject.GetComponent<Health>().health)
+                if (damage >= targetHealth.health)
                 {
                     PhotonNetwork.LocalPlayer.AddScore(1);
                 }
 
-                hit.transform.gameObject.GetComponent<PhotonView>().RPC("TakeDamage", RpcTarget.All,damage);
+                hit.transform.gameObject.GetComponent<PhotonView>().RPC("TakeDamage", RpcTarget.All, damage);
             }
         }
+    }
+
+    [PunRPC]
+    void RpcSpawnHitVFX(Vector3 position)
+    {
+        SpawnHitVFX(position);
+    }
+
+    void SpawnHitVFX(Vector3 position)
+    {
+        GameObject vfx = Instantiate(hitVFX, position, Quaternion.identity);
+        Destroy(vfx, 2f); // Auto-destroy after 2 seconds
     }
 }

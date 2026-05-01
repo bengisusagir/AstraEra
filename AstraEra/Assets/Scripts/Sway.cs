@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Sway : MonoBehaviour
@@ -7,15 +5,15 @@ public class Sway : MonoBehaviour
     [Header("Settings")]
     public float swayClamp = 0.89f;
     [Space]
-    public float snoothing = 3f;
+    public float smoothing = 3f;
 
     private Vector3 origin;
 
     private void Start()
     {
         origin = transform.localPosition;
-
     }
+
     private void Update()
     {
         Vector2 input = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
@@ -25,6 +23,6 @@ public class Sway : MonoBehaviour
 
         Vector3 target = new Vector3(-input.x, -input.y, 0);
 
-        transform.localPosition = Vector3.Lerp(transform.localPosition, target + origin, Time.deltaTime * snoothing);
+        transform.localPosition = Vector3.Lerp(transform.localPosition, target + origin, Time.deltaTime * smoothing);
     }
 }

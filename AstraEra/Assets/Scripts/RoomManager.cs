@@ -18,9 +18,11 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public Button startButton;
     public Button optionsButton;
     public Button quitButton;
+
     [Header("Second Screen")]
     public Button createRoomButton;
     public Button joinRoomButton;
+
     [Header("Third Screen")]
     public TextMeshProUGUI playerListText;
     public Button startGameButton;
@@ -28,9 +30,11 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public static RoomManager instance;
 
     [Header("Options")]
-    public TextMeshProUGUI volumeAmount; 
+    public TextMeshProUGUI volumeAmount;
 
     public string nickname = "unnamed";
+
+    private bool isReconnecting = false;
 
     void Start()
     {
@@ -49,8 +53,10 @@ public class RoomManager : MonoBehaviourPunCallbacks
     {
         createRoomButton.interactable = true;
         joinRoomButton.interactable = true;
+        isReconnecting = false;
         Debug.Log("Connected");
     }
+
     void SetScreen(GameObject screen)
     {
         firstSc.SetActive(false);
@@ -59,10 +65,12 @@ public class RoomManager : MonoBehaviourPunCallbacks
         options.SetActive(false);
         screen.SetActive(true);
     }
+
     public void OnCreateRoomButton(TMP_InputField roomNameInput)
     {
         NetworkManager.instance.CreateRoom(roomNameInput.text);
     }
+
     public void OnJoinRoomButton(TMP_InputField roomNameInput)
     {
         NetworkManager.instance.JoinRoom(roomNameInput.text);
@@ -76,8 +84,9 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public void SetAudio(float value)
     {
         AudioListener.volume = value;
-        volumeAmount.text = ((int)(value*100)).ToString();
+        volumeAmount.text = ((int)(value * 100)).ToString();
     }
+
     public void OptionsButton()
     {
         SetScreen(options);
@@ -92,11 +101,13 @@ public class RoomManager : MonoBehaviourPunCallbacks
     {
         Application.Quit();
     }
+
     public override void OnJoinedRoom()
     {
         SetScreen(thirdSc);
         photonView.RPC("UpdateLobbyUI", RpcTarget.All);
     }
+
     [PunRPC]
     public void UpdateLobbyUI()
     {
@@ -106,37 +117,40 @@ public class RoomManager : MonoBehaviourPunCallbacks
             playerListText.text += player.NickName + "\n";
         }
 
-        if (PhotonNetwork.IsMasterClient)
-            startGameButton.interactable = true;
-        else
-            startGameButton.interactable = false;
+        startGameButton.interactable = PhotonNetwork.IsMasterClient;
     }
+
     public void OnStartButton()
     {
-        
         SetScreen(secSc);
-
     }
+
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         UpdateLobbyUI();
     }
+
     public void OnLeaveLobbyButton()
     {
         PhotonNetwork.LeaveRoom();
         SetScreen(secSc);
     }
+
     public void OnStartGameButton()
     {
         NetworkManager.instance.photonView.RPC("ChangeScene", RpcTarget.All, "Game");
-
     }
-    void Update()
+
+    public override void OnDisconnected(DisconnectCause cause)
     {
-        if (!PhotonNetwork.IsConnected)
+        Debug.LogWarning("Disconnected from Photon: " + cause);
+        createRoomButton.interactable = false;
+        joinRoomButton.interactable = false;
+
+        if (!isReconnecting)
         {
+            isReconnecting = true;
             PhotonNetwork.Reconnect();
         }
-
     }
 }

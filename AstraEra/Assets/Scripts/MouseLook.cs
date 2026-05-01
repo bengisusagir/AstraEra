@@ -1,6 +1,4 @@
-﻿using Photon.Pun;
-using System.Globalization;
-using TMPro;
+using Photon.Pun;
 using UnityEngine;
 
 public class MouseLook : MonoBehaviour
@@ -31,10 +29,12 @@ public class MouseLook : MonoBehaviour
 
     [HideInInspector]
     public bool scoped;
+
     private void Awake()
     {
         PV = characterBody.GetComponent<PhotonView>();
     }
+
     void Start()
     {
         if (!PV.IsMine)
@@ -44,10 +44,22 @@ public class MouseLook : MonoBehaviour
         // Set target direction to the camera's initial orientation.
         targetDirection = transform.localRotation.eulerAngles;
 
-        // Set target direction for the character body to its inital state.
+        // Set target direction for the character body to its initial state.
         if (characterBody)
             targetCharacterDirection = characterBody.transform.localRotation.eulerAngles;
+    }
 
+    /// <summary>
+    /// Allows external systems to modify sensitivity at runtime (e.g. options menu).
+    /// </summary>
+    public void SetSensitivity(float value)
+    {
+        sensitivity = new Vector2(value, value);
+    }
+
+    public Vector2 GetSensitivity()
+    {
+        return sensitivity;
     }
 
     void Update()
@@ -55,19 +67,22 @@ public class MouseLook : MonoBehaviour
         if (!PV.IsMine)
             return;
 
-           if (isESC)
+        if (isESC)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            return; // Do not process mouse input while paused
         }
         else
         {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             isESC = !isESC;
+            return;
         }
 
         // Allow the script to clamp based on a desired target value.
@@ -97,7 +112,6 @@ public class MouseLook : MonoBehaviour
 
         transform.localRotation = Quaternion.AngleAxis(-_mouseAbsolute.y, targetOrientation * Vector3.right) * targetOrientation;
 
-     
         if (characterBody)
         {
             var yRotation = Quaternion.AngleAxis(_mouseAbsolute.x, Vector3.up);

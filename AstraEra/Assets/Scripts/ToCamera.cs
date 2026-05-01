@@ -1,11 +1,25 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ToCamera : MonoBehaviour
 {
+    private Transform mainCameraTransform;
+
+    void Start()
+    {
+        if (Camera.main != null)
+            mainCameraTransform = Camera.main.transform;
+    }
+
     void Update()
     {
-        transform.LookAt(Camera.main.transform);
+        if (mainCameraTransform == null)
+        {
+            if (Camera.main != null)
+                mainCameraTransform = Camera.main.transform;
+            else
+                return;
+        }
+
+        transform.LookAt(mainCameraTransform);
     }
 }

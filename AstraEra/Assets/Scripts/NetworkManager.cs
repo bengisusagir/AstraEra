@@ -7,36 +7,27 @@ using Photon.Pun;
 public class NetworkManager : MonoBehaviourPunCallbacks
 {
     public static NetworkManager instance;
+
     private void Awake()
     {
         if (instance != null && instance != this)
         {
-            gameObject.SetActive(false);
-
+            Destroy(gameObject);
+            return;
         }
-            
 
-        else
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-                }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
     }
+
     void Start()
     {
         if (!PhotonNetwork.IsConnected)
         {
             PhotonNetwork.ConnectUsingSettings();
-
         }
-        else
-        {
-            PhotonNetwork.Disconnect();
-
-        }
-
+        // If already connected, do nothing. Previous version disconnected here, which broke menu re-entry.
     }
-
 
     public void CreateRoom(string roomName)
     {
@@ -47,11 +38,10 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.JoinRoom(roomName);
     }
+
     [PunRPC]
     public void ChangeScene(string sceneName)
     {
         PhotonNetwork.LoadLevel(sceneName);
     }
-
 }
-

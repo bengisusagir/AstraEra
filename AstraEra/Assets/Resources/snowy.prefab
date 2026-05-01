@@ -490,7 +490,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   swayClamp: 0.2
-  snoothing: 2
+  smoothing: 3
 --- !u!111 &709456007933969926
 Animation:
   m_ObjectHideFlags: 0

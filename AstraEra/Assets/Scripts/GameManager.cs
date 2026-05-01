@@ -1,11 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Photon.Realtime;
 using Photon.Pun;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Linq;
 using TMPro;
 
 public class GameManager : MonoBehaviourPunCallbacks
@@ -21,25 +19,27 @@ public class GameManager : MonoBehaviourPunCallbacks
     public Timer timer;
     public GameObject roomCam;
 
-
-
     public static GameManager instance;
+
     private void Awake()
     {
         instance = this;
     }
+
     void Start()
     {
+        // Use a generous upper bound to prevent index-out-of-range
+        int maxPlayers = (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.MaxPlayers > 0)
+            ? PhotonNetwork.CurrentRoom.MaxPlayers
+            : 10;
+        players = new Movement[maxPlayers];
         InvokeRepeating("spGuns", 2f, 15f);
-        players = new Movement[PhotonNetwork.PlayerList.Length];
         photonView.RPC("ImInGame", RpcTarget.All);
     }
-
 
     public void UpdateName(GameObject player)
     {
         player.GetComponent<PhotonView>().RPC("SetNickname", RpcTarget.AllBuffered, PhotonNetwork.LocalPlayer.NickName);
-
     }
 
     [PunRPC]
@@ -53,45 +53,75 @@ public class GameManager : MonoBehaviourPunCallbacks
             timer.enabled = true;
         }
     }
+
     public void SpawnPlayer()
     {
         roomCam.SetActive(false);
-        GameObject playerObj = (GameObject)PhotonNetwork.Instantiate(playerPrefabLocation[Random.Range(0, playerPrefabLocation.Length)], spawnPoints[Random.Range(0, spawnPoints.Length)].position, Quaternion.identity);
-        PlayerSetup.instance.IsLocalPlayer();
+
+        int prefabIndex = Random.Range(0, playerPrefabLocation.Length);
+        int spawnIndex = Random.Range(0, spawnPoints.Length);
+
+        GameObject playerObj = PhotonNetwork.Instantiate(
+            playerPrefabLocation[prefabIndex],
+            spawnPoints[spawnIndex].position,
+            Quaternion.identity
+        );
+
+        PlayerSetup setup = playerObj.GetComponent<PlayerSetup>();
+        if (setup != null)
+        {
+            setup.IsLocalPlayer();
+        }
+
         playerObj.GetComponent<PhotonView>().RPC("SetNickname", RpcTarget.All, PhotonNetwork.LocalPlayer.NickName);
         playerObj.GetComponent<Health>().isLocalPlayer = true;
-        PhotonNetwork.LocalPlayer.NickName = PlayerSetup.instance.nickname;
-        
-
+        PhotonNetwork.LocalPlayer.NickName = PlayerSetup.instance != null ? PlayerSetup.instance.nickname : "unnamed";
     }
+
     [PunRPC]
     public void GameOver()
     {
-        NetworkManager.instance.photonView.RPC("ChangeScene", RpcTarget.All, "Menu");
-        Destroy(NetworkManager.instance.gameObject);
-
-
+        if (NetworkManager.instance != null)
+        {
+            NetworkManager.instance.photonView.RPC("ChangeScene", RpcTarget.All, "Menu");
+            Destroy(NetworkManager.instance.gameObject);
+        }
     }
 
     public Movement GetPlayer(int playerId)
     {
-        return players.First(x => x.id == playerId);
+        return players.FirstOrDefault(x => x != null && x.id == playerId);
     }
+
     public Movement GetPlayer(GameObject playerObj)
     {
-        return players.First(x => x.gameObject == playerObj);
+        return players.FirstOrDefault(x => x != null && x.gameObject == playerObj);
     }
+
     public void OnGoBackButton()
     {
-        NetworkManager.instance.photonView.RPC("ChangeScene", RpcTarget.All, "Menu");
-        Destroy(NetworkManager.instance.gameObject);
+        if (NetworkManager.instance != null)
+        {
+            NetworkManager.instance.photonView.RPC("ChangeScene", RpcTarget.All, "Menu");
+            Destroy(NetworkManager.instance.gameObject);
+        }
     }
-    public void spGuns()
-    { 
-            
-           GameObject guns = (GameObject)PhotonNetwork.Instantiate(gunsLoc[Random.Range(0, gunsLoc.Length)],new Vector3(Random.Range(-35,35), 6, Random.Range(-35, 35)), Quaternion.identity);
-           GameObject ammo = (GameObject)PhotonNetwork.Instantiate("ammo1",new Vector3(Random.Range(-35,35), 1, Random.Range(-35, 35)), Quaternion.identity);
 
+    public void spGuns()
+    {
+        if (!PhotonNetwork.IsMasterClient)
+            return;
+
+        PhotonNetwork.Instantiate(
+            gunsLoc[Random.Range(0, gunsLoc.Length)],
+            new Vector3(Random.Range(-35, 35), 6, Random.Range(-35, 35)),
+            Quaternion.identity
+        );
+
+        PhotonNetwork.Instantiate(
+            "ammo1",
+            new Vector3(Random.Range(-35, 35), 1, Random.Range(-35, 35)),
+            Quaternion.identity
+        );
     }
- 
 }
